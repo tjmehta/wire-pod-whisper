@@ -93,7 +93,7 @@ function getPackages() {
         apt install -y wget openssl net-tools libsox-dev libopus-dev make iproute2 xz-utils libopusfile-dev pkg-config gcc curl g++ unzip avahi-daemon git libasound2-dev libsodium-dev
         elif [[ ${TARGET} == "arch" ]]; then
         pacman -Sy --noconfirm
-        sudo pacman -S --noconfirm wget openssl net-tools sox opus make iproute2 opusfile curl unzip avahi git libsodium go pkg-config 
+        sudo pacman -S --noconfirm wget openssl net-tools sox opus make iproute2 opusfile curl unzip avahi git libsodium go pkg-config
         elif [[ ${TARGET} == "fedora" ]]; then
         dnf update
         dnf install -y wget openssl net-tools sox opus make opusfile curl unzip avahi git libsodium-devel
@@ -143,7 +143,7 @@ function getSTT() {
         echo "1: Coqui (local, no usage collection, less accurate, a little slower)"
         echo "2: Picovoice Leopard (local, usage collected, accurate, account signup required)"
         echo "3: VOSK (local, accurate, multilanguage, fast, recommended)"
-        # echo "4: Whisper (local, accurate, multilanguage, a little slower, recommended for more powerful hardware)"
+        echo "4: Whisper (local, accurate, multilanguage, a little slower, recommended for more powerful hardware)"
         echo
         read -p "Enter a number (3): " sttServiceNum
         if [[ ! -n ${sttServiceNum} ]]; then
@@ -170,6 +170,9 @@ function getSTT() {
     if [[ "$STT" == "vosk" ]]; then
         echo "Vosk config"
         sttService="vosk"
+    elif [[ "$STT" == "whisper" ]]; then
+        echo "Whisper config"
+        sttService="whisper"
     else
         sttServicePrompt
     fi
@@ -213,7 +216,6 @@ function getSTT() {
             unzip "$VOSK_ARCHIVE"
             mv "$VOSK_DIR" libvosk
             rm -fr "$VOSK_ARCHIVE"
-            
             cd ${origDir}/chipper
             export CGO_ENABLED=1
             export CGO_CFLAGS="-I${ROOT}/.vosk/libvosk"
@@ -235,8 +237,8 @@ function getSTT() {
         else
             cd whisper.cpp
         fi
+        availableModels="tiny, base, small, medium, large-v3, large-v3-q5_0"
         function whichWhisperModel() {
-            availableModels="tiny, base, small, medium, large-v3, large-v3-q5_0"
             echo
             echo "Which Whisper model would you like to use?"
             echo "Options: $availableModels"
@@ -254,7 +256,17 @@ function getSTT() {
                 whichWhisperModel
             fi
         }
-        whichWhisperModel
+        if [[ "$WHISPER_MODEL" ]]; then
+            if [[ ! ${availableModels} == *"${whispermodel}"* ]]; then
+                echo
+                echo "Invalid whisper model: $WHISPER_MODEL"
+                whichWhisperModel
+            fi
+            echo "Whisper model: $WHISPER_MODEL"
+            whispermodel="$WHISPER_MODEL"
+        else
+            whichWhisperModel
+        fi
         ./models/download-ggml-model.sh $whispermodel
         cd bindings/go
         make whisper
